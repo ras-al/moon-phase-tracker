@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moon Phase Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px);} to { opacity: 1; transform: translateY(0);} }
+        .moon-image { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; background-color: #1e293b; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-4xl mx-auto text-center">
+        <header class="mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-yellow-300">Moon Phase Tracker</h1>
+            <p class="text-gray-400 mt-2">Featuring daily images</p>
+        </header>
+
+        <main class="bg-gray-800 bg-opacity-50 rounded-2xl p-6 md:p-8 shadow-2xl border border-gray-700">
+            <h2 class="text-2xl font-semibold mb-2 text-yellow-200">Today's Moon Phase</h2>
+            <p id="today-date" class="text-gray-400 mb-6"></p>
+            <div id="today-phase-container" class="flex flex-col items-center justify-center">
+                <div id="today-moon-image-container" class="w-32 h-32 md:w-40 md:h-40 mb-4 bg-gray-700 rounded-full flex items-center justify-center">
+                    <svg class="animate-spin h-10 w-10 text-yellow-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+                <p id="today-moon-name" class="text-xl font-medium capitalize"></p>
+            </div>
+            <div class="mt-8">
+                <button id="forecast-btn" class="bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-3 px-6 rounded-full transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-yellow-400 focus:ring-opacity-50">
+                    Show Next 7 Days
+                </button>
+            </div>
+        </main>
+
+        <section id="forecast-section" class="mt-10 hidden">
+            <h3 class="text-2xl font-semibold mb-6 text-yellow-200">7-Day Forecast</h3>
+            <div id="forecast-grid" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4"></div>
+        </section>
+
+        <footer class="mt-12 text-gray-500 text-sm">
+            <p>Built with 💛 for stargazers.</p>
+        </footer>
+    </div>
+
+    <script>
+        const todayDateEl = document.getElementById('today-date');
+        const todayMoonImageContainerEl = document.getElementById('today-moon-image-container');
+        const todayMoonNameEl = document.getElementById('today-moon-name');
+        const forecastBtn = document.getElementById('forecast-btn');
+        const forecastSection = document.getElementById('forecast-section');
+        const forecastGrid = document.getElementById('forecast-grid');
+        const LUNAR_CYCLE = 29.530588853;
+
+        function getMoonImageUrl(phase) {
+            const map = {
+                "New Moon": "https://img.icons8.com/ios-filled/100/ffffff/new-moon.png",
+                "Waxing Crescent": "https://img.icons8.com/ios-filled/100/ffffff/waxing-crescent.png",
+                "First Quarter": "https://img.icons8.com/ios-filled/100/ffffff/first-quarter.png",
+                "Waxing Gibbous": "https://img.icons8.com/ios-filled/100/ffffff/waxing-gibbous.png",
+                "Full Moon": "https://img.icons8.com/ios-filled/100/ffffff/full-moon.png",
+                "Waning Gibbous": "https://img.icons8.com/ios-filled/100/ffffff/waning-gibbous.png",
+                "Last Quarter": "https://img.icons8.com/ios-filled/100/ffffff/last-quarter.png",
+                "Waning Crescent": "https://img.icons8.com/ios-filled/100/ffffff/waning-crescent.png"
+            };
+            return map[phase];
+        }
+
+        function getMoonPhaseName(date) {
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            let a = Math.floor((14 - month) / 12);
+            let y = year + 4800 - a;
+            let m = month + 12 * a - 3;
+            let jd = day + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
+            const newMoonJD = 2451549.5;
+            const daysSinceNew = jd - newMoonJD;
+            const phase = (daysSinceNew % LUNAR_CYCLE) / LUNAR_CYCLE;
+            if (phase < 0.03 || phase > 0.97) return 'New Moon';
+            if (phase < 0.22) return 'Waxing Crescent';
+            if (phase < 0.28) return 'First Quarter';
+            if (phase < 0.47) return 'Waxing Gibbous';
+            if (phase < 0.53) return 'Full Moon';
+            if (phase < 0.72) return 'Waning Gibbous';
+            if (phase < 0.78) return 'Last Quarter';
+            return 'Waning Crescent';
+        }
+
+        function formatDate(date) {
+            return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        }
+        function formatShortDate(date) {
+            return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        }
+
+        function displayTodayPhase(date) {
+            const phaseName = getMoonPhaseName(date);
+            const imageUrl = getMoonImageUrl(phaseName);
+            todayDateEl.textContent = formatDate(date);
+            todayMoonNameEl.textContent = phaseName;
+            const img = new Image();
+            img.src = imageUrl;
+            img.alt = `Moon phase: ${phaseName}`;
+            img.className = 'moon-image opacity-0 transition-opacity duration-500';
+            img.onload = () => {
+                todayMoonImageContainerEl.innerHTML = '';
+                todayMoonImageContainerEl.appendChild(img);
+                setTimeout(() => img.classList.remove('opacity-0'), 10);
+            };
+            img.onerror = () => {
+                todayMoonImageContainerEl.innerHTML = '<p class="text-xs text-red-400">Image failed to load</p>';
+            };
+        }
+
+        function displayForecast() {
+            forecastGrid.innerHTML = '';
+            forecastSection.classList.remove('hidden');
+            const today = new Date();
+            for (let i = 1; i <= 7; i++) {
+                const forecastDate = new Date(today);
+                forecastDate.setDate(today.getDate() + i);
+                const phaseName = getMoonPhaseName(forecastDate);
+                const imageUrl = getMoonImageUrl(phaseName);
+                const card = document.createElement('div');
+                card.className = 'bg-gray-800 p-4 rounded-lg flex flex-col items-center justify-center space-y-2 fade-in';
+                card.style.animationDelay = `${i * 0.1}s`;
+                card.innerHTML = `
+                    <p class="font-semibold text-sm text-yellow-200">${formatShortDate(forecastDate)}</p>
+                    <div class="w-16 h-16 bg-gray-700 rounded-full">
+                        <img src="${imageUrl}" alt="${phaseName}" class="moon-image" loading="lazy" onerror="this.style.display='none'; this.parentElement.style.backgroundColor='#334155';">
+                    </div>
+                    <p class="text-xs text-center text-gray-300">${phaseName}</p>
+                `;
+                forecastGrid.appendChild(card);
+            }
+        }
+
+        forecastBtn.addEventListener('click', () => {
+            displayForecast();
+            forecastBtn.textContent = "Forecast Displayed";
+            forecastBtn.disabled = true;
+            forecastBtn.classList.remove('hover:bg-yellow-600', 'hover:scale-105');
+            forecastBtn.classList.add('bg-yellow-700', 'cursor-not-allowed');
+        });
+
+        window.addEventListener('load', () => {
+            const today = new Date();
+            displayTodayPhase(today);
+        });
+    </script>
+</body>
+</html>
